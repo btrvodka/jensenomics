@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вся мировая экономика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f6f3ea;
+    --ink: #161616;
+    --up: #1f9d48;
+    --down: #d62a2a;
+    --muted: #6b6760;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink);
+    font-family: Rubik, system-ui, sans-serif; overflow: hidden; }
+  #scene { position: fixed; inset: 0; }
+  #overlay { position: fixed; inset: 0; pointer-events: none; }
+
+  #panel {
+    position: fixed; top: 16px; left: 16px; width: 290px; max-height: calc(100% - 32px);
+    overflow: auto; background: #fffdf7; border: 3px solid var(--ink); border-radius: 14px;
+    box-shadow: 5px 5px 0 var(--ink); padding: 14px 16px; font-size: 14px;
+  }
+  #panel h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .big { font-size: 26px; font-weight: 900; line-height: 1.1; }
+  .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-variant-numeric: tabular-nums; }
+  .row b { font-weight: 700; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .sec { margin-top: 14px; }
+  .meter { height: 14px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: #eee; margin-top: 6px; }
+  .meter > div { height: 100%; background: linear-gradient(90deg, var(--down), #f3c33b, var(--up)); transition: width .8s; }
+  .foot { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  #toggle { display: none; }
+  #lang { position: absolute; top: 10px; right: 12px; display: flex; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; }
+  #lang button { border: 0; background: #fff; font: 700 12px Rubik, sans-serif; padding: 3px 7px; cursor: pointer; color: var(--ink); }
+  #lang button.on { background: var(--ink); color: #fff; }
+  #panel > h2:first-of-type { padding-right: 70px; }
+
+  #tip {
+    position: fixed; pointer-events: none; background: #fffdf7; border: 2px solid var(--ink);
+    border-radius: 10px; padding: 8px 10px; font-size: 13px; box-shadow: 3px 3px 0 var(--ink);
+    display: none; min-width: 160px; z-index: 5;
+  }
+  #tip .t { font-weight: 900; font-size: 18px; }
+
+  @media (max-width: 720px) {
+    #panel { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-height: 42%; font-size: 13px; padding: 10px 12px; }
+    #panel.collapsed .sec, #panel.collapsed .foot { display: none; }
+    #toggle { display: block; position: absolute; top: 8px; right: 10px; border: 2px solid var(--ink);
+      background: #fff; border-radius: 8px; font: 700 12px Rubik, sans-serif; padding: 3px 8px; }
+    .big { font-size: 22px; }
+    #lang { top: 8px; right: 66px; }
+    #panel > h2:first-of-type { padding-right: 130px; }
+  }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<canvas id="overlay"></canvas>
+
+<aside id="panel" class="collapsed">
+  <div id="lang"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+  <button id="toggle" data-i18n="more">ещё</button>
+  <h2 data-i18n="capTitle">Капитализация всей мировой экономики</h2>
+  <div class="big" id="cap">—</div>
+  <div id="capchg" class="row">—</div>
+  <div class="sec">
+    <h2 data-i18n="hypeTitle">Индекс надутости</h2>
+    <div class="row"><span id="mood">—</span><b id="breadth">—</b></div>
+    <div class="meter"><div id="meter" style="width:50%"></div></div>
+  </div>
+  <div class="sec">
+    <h2 data-i18n="gainersTitle">Надуваются</h2>
+    <div id="gainers"></div>
+  </div>
+  <div class="sec">
+    <h2 data-i18n="losersTitle">Сдуваются</h2>
+    <div id="losers"></div>
+  </div>
+  <div class="foot">
+    <div><span class="dot" id="mdot"></span><span id="mstate">—</span></div>
+    <div id="upd" data-i18n="loading">загрузка…</div>
+    <div data-i18n="disclaimer">Данные: Yahoo Finance, с задержкой. Размер плиток ≈ капитализация. Не инвестиционный совет, а мем.</div>
+  </div>
+</aside>
+<div id="tip"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
