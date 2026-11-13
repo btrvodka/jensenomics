@@ -23,6 +23,23 @@ go build -o jensenomics . && ./jensenomics      # http://localhost:8080
 Нужен Go 1.22+. Фронтенд встроен в бинарник через `embed`.
 Requires Go 1.22+. The frontend is embedded into the binary.
 
+### Make
+
+```sh
+make run            # собрать и запустить / build & run (PORT=8080 REFRESH=1m)
+make demo           # демо-режим / demo mode
+make help           # все команды / all targets
+```
+
+### Docker
+
+```sh
+make docker-build && make docker-run          # http://localhost:8080
+# или напрямую / or directly:
+docker build -t jensenomics .
+docker run --rm -p 8080:8080 jensenomics
+```
+
 ## Как это устроено / How it works
 
 - `quotes.go` — каждые N секунд забирает цену и % изменения за день с Yahoo Finance (`v8/finance/chart`), отдаёт их на `/api/quotes`. / Polls Yahoo Finance and serves `/api/quotes`.
