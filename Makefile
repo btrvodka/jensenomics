@@ -53,7 +53,7 @@ docker-build: ## собрать Docker-образ локально
 	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE):$(IMAGE_TAG) -t $(IMAGE):latest .
 
 docker-run: ## запустить образ на порту PORT
-	docker run --rm -d --name $(APP) -p $(PORT):8080 $(IMAGE):latest -addr :8080 -refresh $(REFRESH)
+	docker run --rm -d --name $(APP) -p $(PORT):8080 -v $(APP)-data:/data $(IMAGE):latest -addr :8080 -refresh $(REFRESH) -crash-file /data/crashes
 	@echo "http://localhost:$(PORT)"
 
 docker-demo: ## запустить образ в демо-режиме

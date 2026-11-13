@@ -36,6 +36,9 @@
   .foot { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.4; }
   .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
   #toggle { display: none; }
+  body { transition: background .8s; }
+  body.night { --paper: #262833; }
+  .crashes { color: var(--muted); font-size: 12px; }
   .egg { margin: 6px 0; color: var(--ink); font-weight: 700; }
   #suggest { display: inline-block; margin: 2px 0 8px; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 8px;
     background: #f3c33b; color: var(--ink); font-weight: 700; text-decoration: none; box-shadow: 2px 2px 0 var(--ink); }
@@ -73,6 +76,8 @@
   <h2 data-i18n="capTitle">Капитализация всей мировой экономики</h2>
   <div class="big" id="cap">—</div>
   <div id="capchg" class="row">—</div>
+  <div id="lost" class="row" style="display:none"></div>
+  <div id="crashes" class="row crashes"></div>
   <div class="sec">
     <h2 data-i18n="hypeTitle">Индекс надутости</h2>
     <div class="row"><span id="mood">—</span><b id="breadth">—</b></div>
@@ -89,7 +94,7 @@
   <div class="foot">
     <div><span class="dot" id="mdot"></span><span id="mstate">—</span></div>
     <div id="upd" data-i18n="loading">загрузка…</div>
-    <div class="egg" data-i18n="hint">Пасхалки: тащи постамент, тыкай в палку, хватай мир.</div>
+    <div class="egg" data-i18n="hint">Пасхалки: тащи постамент, тыкай в палку, раскручивай мир, дважды ткни в компанию, набери NVDA. И это не всё.</div>
     <a id="suggest" href="https://github.com/btrvodka/jensenomics/issues/new" target="_blank" rel="noopener" data-i18n="suggest">Предложить идею</a>
     <div data-i18n="disclaimer">Данные: Yahoo Finance, с задержкой. Размер плиток ≈ капитализация. Не инвестиционный совет, а мем.</div>
   </div>

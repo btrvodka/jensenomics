@@ -29,6 +29,7 @@ type Snapshot struct {
 	Updated    int64   `json:"updated"`
 	MarketOpen bool    `json:"marketOpen"`
 	Demo       bool    `json:"demo"`
+	Crashes    int64   `json:"crashes"`
 	Quotes     []Quote `json:"quotes"`
 }
 

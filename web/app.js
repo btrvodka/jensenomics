@@ -50,7 +50,8 @@ host.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb8b0a0, 1.6));
+const hemi = new THREE.HemisphereLight(0xffffff, 0xb8b0a0, 1.6);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
 sun.position.set(4, 6, 8);
 scene.add(sun);
@@ -173,12 +174,14 @@ pivot.position.y = ROD_H;
 const baseMeshes = [];
 let rodHit;
 {
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, ROD_H, 24), toon({ color: 0xd62a2a }));
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, ROD_H, 24, 16), toon({ color: 0xd62a2a }));
+  rod.name = 'rod';
   rod.position.y = ROD_H / 2;
   rodPivot.add(rod);
   outlineByScale(rod, 0.025);
   const shine = new THREE.Mesh(new THREE.BoxGeometry(0.025, ROD_H * 0.85, 0.02), new THREE.MeshBasicMaterial({ color: 0xff8a80 }));
   shine.position.set(-0.04, ROD_H / 2, 0.085);
+  shine.name = 'shine';
   rodPivot.add(shine);
   // невидимый толстый цилиндр, чтобы по тонкой палке было легко попасть
   rodHit = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, ROD_H, 8), new THREE.MeshBasicMaterial({ visible: false }));
@@ -243,6 +246,7 @@ function mix(c1, c2, t) {
   return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], t))).join(',')})`;
 }
 function tileColor(q) {
+  if (chaos.green) return '#1fb34f';
   if (!q || !q.live) return '#7d7a74';
   const v = Math.max(-1, Math.min(1, q.changePct / 3));
   if (v >= 0) return mix('#3d5a45', '#22b350', Math.pow(v, 0.6));
@@ -324,6 +328,14 @@ function drawTile(ctx, t, q, labels = true) {
   }
 }
 
+function drawHole(ctx, t) {
+  ctx.fillStyle = '#0c0c0e';
+  ctx.fillRect(t.x + 3, t.y + 3, t.w - 6, t.h - 6);
+  ctx.strokeStyle = '#2a2a2e';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(t.x + 10, t.y + 10, t.w - 20, t.h - 20);
+}
+
 function drawTexture() {
   const ctx = tctx;
   ctx.fillStyle = '#161616';
@@ -357,7 +369,7 @@ function drawTexture() {
   tiles = [];
   for (const g of squarify(gItems, 0, y0, TEX_W, gh)) {
     const inner = squarify(g.list.map((q) => ({ q, v: Math.pow(q.cap, 0.45) })), g.x + 6, g.y + 6, g.w - 12, g.h - 12);
-    for (const t of inner) { drawTile(ctx, t, t.q); tiles.push(t); }
+    for (const t of inner) { if (chaos.removed.has(t.q.symbol)) drawHole(ctx, t); else drawTile(ctx, t, t.q); tiles.push(t); }
     ctx.lineWidth = 12;
     ctx.strokeStyle = '#161616';
     ctx.strokeRect(g.x + 3, g.y + 3, g.w - 6, g.h - 6);
@@ -406,7 +418,11 @@ const I18N = {
     trn: ' трлн', bln: ' млрд', decimal: ',', locale: 'ru-RU',
     groups: { chips: 'Чипы', megacaps: 'Мегакэпы', software: 'Софт', hardware: 'Железо' },
     tiltLabel: 'Крен рынка', crash: 'КРАХ!', crashLine: 'Вся мировая экономика', fixing: 'Хуанг уже везёт новые видеокарты…',
-    hint: 'Пасхалки: тащи постамент, тыкай в палку, хватай мир.', suggest: 'Предложить идею',
+    hint: 'Пасхалки: тащи постамент, тыкай в палку, раскручивай мир, дважды ткни в компанию, набери NVDA. И это не всё.',
+    suggest: 'Предложить идею',
+    leftChat: (s) => `${s} покинула чат`, overheat: 'ПЕРЕГРЕВ! Нужно больше охлаждения (и видеокарт)',
+    lost: 'Улетело капитализации', pop: 'ПУФ!', happy: 'Хуанг доволен: NVDA +∞%', rebalanced: 'Индекс ребалансирован',
+    crashes: (n) => `Экономику обрушили ${n} ${n % 10 === 1 && n % 100 !== 11 ? 'раз' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'раза' : 'раз'}`,
   },
   en: {
     docTitle: 'The Entire World Economy',
@@ -423,7 +439,11 @@ const I18N = {
     trn: 'T', bln: 'B', decimal: '.', locale: 'en-US',
     groups: { chips: 'Chips', megacaps: 'Megacaps', software: 'Software', hardware: 'Hardware' },
     tiltLabel: 'Market tilt', crash: 'CRASH!', crashLine: 'The entire world economy', fixing: 'Jensen is shipping more GPUs…',
-    hint: 'Easter eggs: drag the pedestal, poke the stick, grab the world.', suggest: 'Suggest an idea',
+    hint: 'Easter eggs: drag the pedestal, poke the stick, spin the world, double-tap a company, type NVDA. And there is more.',
+    suggest: 'Suggest an idea',
+    leftChat: (s) => `${s} has left the chat`, overheat: 'OVERHEATING! Needs more cooling (and GPUs)',
+    lost: 'Market cap flung off', pop: 'POP!', happy: 'Jensen is pleased: NVDA +∞%', rebalanced: 'Index rebalanced',
+    crashes: (n) => `World economy crashed ${n} time${n === 1 ? '' : 's'}`,
   },
 };
 let lang = 'ru';
@@ -478,6 +498,23 @@ function renderPanel(snap) {
   $('mdot').style.background = snap.marketOpen ? 'var(--up)' : '#9a958c';
   $('mstate').textContent = snap.demo ? T().demo : snap.marketOpen ? T().open : T().closed;
   $('upd').textContent = snap.updated ? T().updated + new Date(snap.updated * 1000).toLocaleTimeString(T().locale) : T().loading;
+  updateLostRow();
+  setCrashes(state.crashes);
+}
+function updateLostRow() {
+  const el = $('lost');
+  el.style.display = chaos.lost > 0 ? '' : 'none';
+  if (chaos.lost > 0) el.innerHTML = `<span>${T().lost}</span><b class="down">−${moneyB(chaos.lost)}</b>`;
+}
+function setCrashes(n) {
+  state.crashes = n || 0;
+  $('crashes').textContent = T().crashes(state.crashes);
+}
+async function reportCrash() {
+  try {
+    const r = await fetch('api/crash', { method: 'POST' });
+    setCrashes((await r.json()).crashes);
+  } catch {}
 }
 $('toggle').onclick = () => {
   const p = $('panel');
@@ -492,6 +529,10 @@ async function load() {
     state.quotes = snap.quotes;
     state.bySym = Object.fromEntries(snap.quotes.map((q) => [q.symbol, q]));
     state.marketOpen = snap.marketOpen;
+    state.demo = snap.demo;
+    state.loaded = true;
+    state.crashes = snap.crashes || 0;
+    if ((state.bySym.NVDA?.changePct ?? 0) > 5) chaos.jump = 0; // NVDA растёт — мир подпрыгивает
     const live = snap.quotes.filter((q) => q.live);
     const capLive = live.reduce((s, q) => s + q.cap, 0) || 1;
     state.avg = live.reduce((s, q) => s + q.changePct * q.cap, 0) / capLive;
@@ -517,7 +558,8 @@ function drawOverlay() {
   const dpr = Math.min(devicePixelRatio, 2);
   octx.setTransform(dpr, 0, 0, dpr, 0, 0);
   octx.clearRect(0, 0, innerWidth, innerHeight);
-  octx.strokeStyle = octx.fillStyle = '#161616';
+  const INKC = chaos.night > 0.5 ? '#efe9dc' : '#161616';
+  octx.strokeStyle = octx.fillStyle = INKC;
   octx.lineCap = 'round'; octx.lineJoin = 'round';
 
   // «ВСЯ МИРОВАЯ ЭКОНОМИКА» с фигурной скобкой
@@ -543,6 +585,7 @@ function drawOverlay() {
   octx.font = `900 ${fs}px Rubik, sans-serif`;
   octx.textAlign = 'center'; octx.textBaseline = 'bottom';
   title.forEach((l, i) => octx.fillText(l, mid, ly - bh - fs * 0.25 - (title.length - 1 - i) * fs * 1.05));
+  titleBox = { x0: mid - bw * 0.7, x1: mid + bw * 0.7, y0: ly - bh - fs * 1.3 * title.length, y1: ly };
 
   // подпись к стержню со стрелкой
   tmpW.set(0.1, ROD_H * 0.545, 0);
@@ -588,9 +631,9 @@ function drawOverlay() {
     const pct = Math.min(99, Math.abs(phys.ang) / TOPPLE * 100);
     octx.font = `900 ${Math.round(fs2 * 0.7)}px Rubik, sans-serif`;
     octx.textAlign = 'right';
-    octx.fillStyle = pct > 66 ? '#d62a2a' : '#161616';
+    octx.fillStyle = pct > 66 ? '#d62a2a' : INKC;
     octx.fillText(`${T().tiltLabel} −${pct.toFixed(0)}%`, kx - 24, ky);
-    octx.fillStyle = '#161616';
+    octx.fillStyle = INKC;
   }
 
   // крах
@@ -613,13 +656,51 @@ function drawOverlay() {
     octx.strokeText(line, cx2, cy2 + big * 0.75);
     octx.fillText(line, cx2, cy2 + big * 0.75);
     if (phys.t > 2.5 && phys.mode === 'fall') {
-      octx.fillStyle = '#161616';
+      octx.fillStyle = INKC;
       octx.font = `700 ${small * 0.7}px Rubik, sans-serif`;
       octx.strokeText(T().fixing, cx2, cy2 + big * 1.25);
       octx.fillText(T().fixing, cx2, cy2 + big * 1.25);
     }
-    octx.strokeStyle = octx.fillStyle = '#161616';
+    octx.strokeStyle = octx.fillStyle = INKC;
   }
+
+  // ночью мир спит
+  if (chaos.night > 0.5 && phys.mode === 'balance') {
+    tmpW.set(1.15 * S, 1.9 * S, 0);
+    tilt.localToWorld(tmpW);
+    const [zx, zy] = toScreen(tmpW.x, tmpW.y, tmpW.z);
+    octx.textAlign = 'left'; octx.textBaseline = 'middle';
+    for (let i = 0; i < 3; i++) {
+      const ph = (t * 0.35 + i / 3) % 1;
+      octx.globalAlpha = (1 - ph) * Math.min(1, ph * 5);
+      octx.fillStyle = INKC;
+      octx.font = `900 ${Math.round(16 + ph * 30)}px Rubik, sans-serif`;
+      octx.fillText('Z', zx + ph * 60, zy - ph * 110);
+    }
+    octx.globalAlpha = 1;
+  }
+
+  // всплывающие надписи
+  const tcx = innerWidth / 2 + (innerWidth > 720 ? Math.min(170, innerWidth * 0.12) / 2 : 0);
+  const baseFs = Math.max(16, Math.min(38, innerWidth / 24));
+  let stackY = innerHeight * 0.3;
+  octx.textAlign = 'center'; octx.textBaseline = 'middle';
+  for (const ts of toasts) {
+    let f = baseFs * ts.size;
+    octx.font = `900 ${f}px Rubik, sans-serif`;
+    const w = octx.measureText(ts.text).width;
+    if (w > innerWidth - 24) { f *= (innerWidth - 24) / w; octx.font = `900 ${f}px Rubik, sans-serif`; }
+    let x = tcx, y;
+    if (ts.world) { [x, y] = toScreen(ts.world.x, ts.world.y, ts.world.z); y -= ts.t * 50; }
+    else { y = stackY; stackY += f * 1.35; }
+    octx.globalAlpha = Math.max(0, Math.min(1, ts.t / 0.15, (ts.dur - ts.t) / 0.4));
+    octx.lineWidth = f / 5;
+    octx.strokeStyle = '#fffdf7';
+    octx.fillStyle = ts.color;
+    octx.strokeText(ts.text, x, y);
+    octx.fillText(ts.text, x, y);
+  }
+  octx.globalAlpha = 1;
 }
 
 // ---------- наведение и взаимодействие ----------
@@ -638,16 +719,27 @@ function rayAt(x, y) {
 }
 function planeX(x, y) { return rayAt(x, y).ray.intersectPlane(zPlane, tmpP) ? tmpP.x : null; }
 function hitTest(x, y) {
-  const hits = rayAt(x, y).intersectObjects([heartMesh, ...towerBlocks.map((b) => b.mesh), rodHit, ...baseMeshes], false);
+  const hits = rayAt(x, y).intersectObjects([heartMesh, ...towerBlocks.filter((b) => !b.gone).map((b) => b.mesh), rodHit, ...baseMeshes], false);
   return hits.length ? { ...hits[0], kind: hits[0].object.userData.kind } : null;
 }
 
 const cv = renderer.domElement;
 cv.style.touchAction = 'none';
 cv.addEventListener('pointerdown', (e) => {
+  askMotion();
   pointer = { x: e.clientX, y: e.clientY };
+  if (titleBox && e.clientX > titleBox.x0 && e.clientX < titleBox.x1 && e.clientY > titleBox.y0 && e.clientY < titleBox.y1) titleTap();
   const h = hitTest(e.clientX, e.clientY);
   if (!h) return;
+  if (h.object === heartMesh && h.uv && phys.mode === 'balance') {
+    const now = performance.now();
+    if (now - lastTap.time < 350 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+      lastTap.time = 0;
+      popTile(h);
+      return;
+    }
+    lastTap = { time: now, x: e.clientX, y: e.clientY };
+  }
   if (h.kind === 'rod' && phys.mode === 'balance') {
     const local = rodPivot.worldToLocal(h.point.clone());
     phys.angV += (local.x > 0 ? 1 : -1) * 1.7; // толчок в сторону от точки удара
@@ -765,6 +857,7 @@ function topple() {
   phys.hav = Math.sign(a) * 2.2;
   phys.pct = 0;
   phys.target = -(25 + Math.random() * 60);
+  reportCrash();
 }
 function startReset() {
   phys.mode = 'reset';
@@ -774,7 +867,7 @@ function startReset() {
 
 function step(dt) {
   phys.t += dt;
-  const market = Math.min(6, 1.4 + state.avgAbs * 0.7) * (state.marketOpen ? 1 : 0.7);
+  const market = Math.min(6, 1.4 + state.avgAbs * 0.7) * (state.marketOpen ? 1 : 0.45);
 
   // постамент едет за мышью, рывки раскачивают стержень
   const prevV = phys.baseV;
@@ -821,9 +914,10 @@ function step(dt) {
   const k = Math.min(1, dt * 6);
   tilt.rotation.x += (wob * Math.sin(t * 1.7) - tilt.rotation.x) * k;
   tilt.rotation.z += (wob * Math.cos(t * 1.7) + lean - tilt.rotation.z) * k;
-  tilt.position.set(0, 0, 0);
+  tilt.position.set(0, chaos.jump < 0.7 ? Math.sin(chaos.jump / 0.7 * Math.PI) * 0.6 : 0, 0);
   if (state.avg < -4 && phys.mode === 'balance') { // рынок рушится — трясёт
-    tilt.position.set((Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06, 0);
+    tilt.position.x += (Math.random() - 0.5) * 0.06;
+    tilt.position.y += (Math.random() - 0.5) * 0.06;
   }
 
   if (phys.mode === 'fall') {
@@ -849,11 +943,369 @@ function step(dt) {
       pivot.position.set(0, ROD_H, 0);
       pivot.rotation.set(0, 0, 0);
       phys.mode = 'balance';
+      restoreAll(true);
     }
   }
 
+  stepEggs(dt);
   for (const sw of swirls) sw.g.visible = phys.mode === 'balance';
   for (const sw of swirls) sw.g.rotation.y -= sw.speed * Math.max(0.3, Math.abs(phys.spin)) * 0.6 * dt;
+}
+
+// ---------- пасхалки: центробежка, башни, перегрев, пузыри, NVDA, рынок, ночь, тряска ----------
+const FLY_SPIN = 10, TOWER_SPIN = 18; // рад/с: плитки слетают, башенки срываются
+const chaos = {
+  removed: new Set(), lost: 0, calm: 0, flyAcc: 0, towerAcc: 0,
+  heat: 0, heatToastAt: -99, green: false, greenUntil: 0,
+  texDirty: false, texAt: 0, jump: 9, night: 0, bend: 0,
+};
+const debris = []; // { obj, v, av, r, life, ttl, block }
+const toasts = []; // { text, t, dur, world, color, size }
+const pops = [];
+const steam = [];
+let titleBox = null, titleTaps = [], lastTap = { time: 0, x: 0, y: 0 };
+
+function toast(text, opts = {}) {
+  toasts.push({ text, t: 0, dur: 2.8, color: '#d62a2a', size: 1, ...opts });
+  if (toasts.length > 6) toasts.shift();
+}
+
+// --- обломки: общая физика для плиток, башенок, осколков и видеокарт ---
+function floorAt3(x, z) {
+  const d = Math.abs(x - phys.baseX), az = Math.abs(z);
+  if (d < 1.3 && az < 0.7) return -ROD_H;
+  if (d < 2.1 && az < 1.1) return -ROD_H - 0.32;
+  return -ROD_H - 0.62;
+}
+const rndSpin = () => new THREE.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+function addDebris(obj, v, { r = 0.15, ttl = 7, block = null } = {}) {
+  debris.push({ obj, v, av: rndSpin(), r, life: 0, ttl, block, s0: obj.scale.clone() });
+}
+function dropDebris(i) {
+  const d = debris[i];
+  d.obj.parent?.remove(d.obj);
+  d.obj.userData.dispose?.();
+  debris.splice(i, 1);
+}
+function stepDebris(dt) {
+  for (let i = debris.length - 1; i >= 0; i--) {
+    const d = debris[i];
+    d.life += dt;
+    d.v.y -= 14 * dt;
+    d.obj.position.addScaledVector(d.v, dt);
+    d.obj.rotation.x += d.av.x * dt;
+    d.obj.rotation.y += d.av.y * dt;
+    d.obj.rotation.z += d.av.z * dt;
+    const f = floorAt3(d.obj.position.x, d.obj.position.z) + d.r;
+    if (d.obj.position.y < f) {
+      d.obj.position.y = f;
+      if (d.v.y < 0) d.v.y *= -0.35;
+      d.v.x *= 0.75; d.v.z *= 0.75;
+      d.av.multiplyScalar(0.7);
+    }
+    if (d.ttl && d.life > d.ttl) {
+      const k = 1 - (d.life - d.ttl) / 0.6;
+      if (k <= 0) { dropDebris(i); continue; }
+      d.obj.scale.copy(d.s0).multiplyScalar(k);
+    }
+  }
+}
+
+// --- центробежка: плитки слетают с мира ---
+const chipGeo = new THREE.BoxGeometry(1, 0.72, 0.08);
+function makeChip(q) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 92;
+  drawTile(c.getContext('2d'), { x: -3, y: -3, w: 134, h: 98 }, q);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const side = new THREE.MeshBasicMaterial({ color: tileColor(q) });
+  const face = new THREE.MeshBasicMaterial({ map: tex });
+  const m = new THREE.Mesh(chipGeo, [side, side, side, side, face, face]);
+  m.scale.setScalar(0.3 + Math.sqrt(q.cap) / 110);
+  m.userData.dispose = () => { tex.dispose(); side.dispose(); face.dispose(); };
+  return m;
+}
+const anchors = new Map(); // тикер → точка на поверхности сердца (локально)
+function tileAnchor(t) {
+  if (anchors.has(t.q.symbol)) return anchors.get(t.q.symbol);
+  const uv = heartMesh.geometry.attributes.uv, pos = heartMesh.geometry.attributes.position;
+  const u = (t.x + t.w / 2) / TEX_W, v = 1 - (t.y + t.h / 2) / TEX_H;
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < uv.count; i++) {
+    let du = Math.abs(uv.getX(i) - u);
+    du = Math.min(du, 1 - du);
+    const dv = uv.getY(i) - v, d = du * du * 4 + dv * dv;
+    if (d < bd) { bd = d; best = i; }
+  }
+  const p = new THREE.Vector3().fromBufferAttribute(pos, best);
+  anchors.set(t.q.symbol, p);
+  return p;
+}
+function flingVelocity(p) { // касательная скорость вращения + немного наружу и вверх
+  const pw = pivot.getWorldPosition(new THREE.Vector3());
+  const rx = p.x - pw.x, rz = p.z - pw.z, w = phys.spin * 0.35;
+  const out = new THREE.Vector3(rx, 0, rz).normalize();
+  return new THREE.Vector3(w * rz, 2 + Math.random() * 2.5, -w * rx).addScaledVector(out, 2);
+}
+function flyTile() {
+  const t = tiles.filter((t) => !chaos.removed.has(t.q.symbol)).sort((a, b) => a.q.cap - b.q.cap)[0];
+  if (!t) return;
+  chaos.removed.add(t.q.symbol);
+  chaos.lost += t.q.cap;
+  chaos.texDirty = true;
+  const p = heartMesh.localToWorld(tileAnchor(t).clone());
+  const m = makeChip(t.q);
+  m.position.copy(p);
+  m.rotation.y = Math.random() * Math.PI;
+  scene.add(m);
+  addDebris(m, flingVelocity(p), { r: 0.12, ttl: 6 + Math.random() * 2 });
+  updateLostRow();
+}
+function flyTower() {
+  const b = [...towerBlocks].reverse().find((b) => !b.gone);
+  if (!b) return;
+  b.home ||= { pos: b.mesh.position.clone(), quat: b.mesh.quaternion.clone(), scale: b.mesh.scale.clone() };
+  b.gone = true;
+  scene.attach(b.mesh);
+  const g = b.mesh.geometry.parameters;
+  addDebris(b.mesh, flingVelocity(b.mesh.position), { r: Math.max(g.radiusTop, g.height / 2) * S, ttl: 0, block: b });
+  if (b.sym) toast(T().leftChat(b.sym));
+}
+function restoreAll(silent) {
+  const had = chaos.removed.size > 0 || towerBlocks.some((b) => b.gone);
+  chaos.removed.clear();
+  chaos.lost = 0;
+  chaos.calm = 0;
+  chaos.texDirty = true;
+  for (const b of towerBlocks) {
+    if (!b.gone) continue;
+    const i = debris.findIndex((d) => d.block === b);
+    if (i >= 0) debris.splice(i, 1);
+    heartGroup.add(b.mesh);
+    b.mesh.position.copy(b.home.pos);
+    b.mesh.quaternion.copy(b.home.quat);
+    b.mesh.scale.copy(b.home.scale);
+    b.gone = false;
+  }
+  updateLostRow();
+  if (had && !silent) toast(T().rebalanced, { color: '#1f9d48' });
+}
+
+// --- перегрев: мир краснеет, идёт пар ---
+const steamTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,0.95)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+function stepHeat(dt) {
+  const sp = Math.abs(phys.spin);
+  chaos.heat = THREE.MathUtils.clamp(chaos.heat + (sp > 8 ? (sp - 8) * 0.03 : -0.12) * dt, 0, 1);
+  heartMesh.material.emissive.setRGB(chaos.heat * 0.8, chaos.heat * 0.15, 0);
+  if (chaos.heat > 0.85 && t - chaos.heatToastAt > 6) { chaos.heatToastAt = t; toast(T().overheat, { size: 0.75 }); }
+  if (chaos.heat > 0.4 && phys.mode === 'balance' && Math.random() < chaos.heat * dt * 14) {
+    const puff = new THREE.Sprite(new THREE.SpriteMaterial({ map: steamTex, transparent: true, depthWrite: false, opacity: 0.8 }));
+    tmpW.set((Math.random() - 0.5) * 2.2 * S, 2.3 * S, (Math.random() - 0.5) * S);
+    tilt.localToWorld(tmpW);
+    puff.position.copy(tmpW);
+    scene.add(puff);
+    steam.push({ puff, life: 0, seed: Math.random() * 6 });
+  }
+  for (let i = steam.length - 1; i >= 0; i--) {
+    const st = steam[i];
+    st.life += dt;
+    st.puff.position.y += dt * 1.4;
+    st.puff.position.x += Math.sin(st.life * 3 + st.seed) * dt * 0.3;
+    st.puff.scale.setScalar(0.5 + st.life * 1.2);
+    st.puff.material.opacity = Math.max(0, 0.8 * (1 - st.life / 2));
+    if (st.life > 2) { scene.remove(st.puff); st.puff.material.dispose(); steam.splice(i, 1); }
+  }
+}
+
+// --- двойной тап по компании: она раздувается и лопается ---
+const shardGeo = new THREE.BoxGeometry(0.12, 0.12, 0.03);
+function popTile(h) {
+  const px = h.uv.x * TEX_W, py = (1 - h.uv.y) * TEX_H;
+  const tl = tiles.find((t) => px >= t.x && px < t.x + t.w && py >= t.y && py < t.y + t.h);
+  if (!tl || chaos.removed.has(tl.q.symbol)) return;
+  const n = h.face.normal.clone().transformDirection(heartMesh.matrixWorld);
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), toon({ color: tileColor(tl.q), transparent: true, opacity: 0.8 }));
+  m.position.copy(h.point);
+  m.scale.setScalar(0.05);
+  scene.add(m);
+  pops.push({ m, n, q: tl.q, t: 0, p: h.point.clone() });
+  chaos.removed.add(tl.q.symbol);
+  chaos.lost += tl.q.cap;
+  chaos.texDirty = true;
+  updateLostRow();
+}
+function stepPops(dt) {
+  for (let i = pops.length - 1; i >= 0; i--) {
+    const p = pops[i];
+    p.t += dt;
+    const r = 0.05 + Math.min(1, p.t / 0.6) * 0.55 + Math.sin(p.t * 40) * 0.02;
+    p.m.scale.setScalar(r);
+    p.m.position.copy(p.p).addScaledVector(p.n, r);
+    if (p.t < 0.65) continue;
+    scene.remove(p.m);
+    p.m.geometry.dispose();
+    p.m.material.dispose();
+    pops.splice(i, 1);
+    const mat = new THREE.MeshBasicMaterial({ color: tileColor(p.q) });
+    let left = 14;
+    for (let k = 0; k < 14; k++) {
+      const sh = new THREE.Mesh(shardGeo, mat);
+      sh.position.copy(p.m.position);
+      sh.userData.dispose = () => { if (--left === 0) mat.dispose(); };
+      scene.add(sh);
+      const dir = new THREE.Vector3().randomDirection().addScaledVector(p.n, 0.8).normalize();
+      addDebris(sh, dir.multiplyScalar(4 + Math.random() * 3), { r: 0.04, ttl: 1 + Math.random() });
+    }
+    toast(`${T().pop} ${p.q.symbol} ${fmtPct(p.q.changePct)}`, { world: p.m.position.clone(), dur: 1.8, size: 0.8, color: tileColor(p.q) });
+  }
+}
+
+// --- набрать NVDA / Konami-код / 5 тапов по заголовку: Хуанг доволен ---
+const gpuParts = {
+  body: new THREE.BoxGeometry(1, 0.18, 0.45), stripe: new THREE.BoxGeometry(1.01, 0.04, 0.46),
+  fan: new THREE.CylinderGeometry(0.16, 0.16, 0.03, 20),
+  bodyMat: toon({ color: 0x2d2f36 }), stripeMat: new THREE.MeshBasicMaterial({ color: 0x3ddc84 }), fanMat: toon({ color: 0x7a7f8c }),
+};
+function spawnGPU() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(gpuParts.body, gpuParts.bodyMat);
+  g.add(body);
+  outlineByScale(body, 0.02);
+  const stripe = new THREE.Mesh(gpuParts.stripe, gpuParts.stripeMat);
+  stripe.position.y = 0.08;
+  g.add(stripe);
+  for (const x of [-0.24, 0.24]) {
+    const fan = new THREE.Mesh(gpuParts.fan, gpuParts.fanMat);
+    fan.position.set(x, -0.1, 0);
+    g.add(fan);
+  }
+  g.position.set(phys.baseX + (Math.random() - 0.5) * 9, 7 + Math.random() * 3, (Math.random() - 0.5) * 2);
+  g.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+  g.scale.setScalar(0.8 + Math.random() * 0.4);
+  scene.add(g);
+  addDebris(g, new THREE.Vector3(0, -2, 0), { r: 0.14, ttl: 8 + Math.random() * 2 });
+}
+function jensenParty() {
+  if (chaos.green) return;
+  chaos.green = true;
+  chaos.greenUntil = t + 10;
+  chaos.texDirty = true;
+  drawTowers();
+  toast(T().happy, { color: '#1f9d48', dur: 4, size: 1.2 });
+  for (let i = 0; i < 40; i++) setTimeout(spawnGPU, i * 90);
+}
+const SECRET = [
+  ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'],
+  ['KeyN', 'KeyV', 'KeyD', 'KeyA'], // по коду клавиши — работает и в русской раскладке
+];
+let keyLog = [];
+addEventListener('keydown', (e) => {
+  keyLog = [...keyLog, e.code].slice(-10);
+  if (SECRET.some((seq) => seq.every((c, i) => keyLog[keyLog.length - seq.length + i] === c))) jensenParty();
+});
+function titleTap() {
+  const now = performance.now();
+  titleTaps = [...titleTaps.filter((x) => now - x < 2000), now];
+  if (titleTaps.length >= 5) { titleTaps = []; jensenParty(); }
+}
+
+// --- реакция на настоящий рынок: NVDA −5% гнёт стержень ---
+const rodMesh = rodPivot.getObjectByName('rod'), rodShine = rodPivot.getObjectByName('shine');
+const rodBase = rodMesh.geometry.attributes.position.array.slice();
+let rodBent = 0;
+function bendRod(b) {
+  if (Math.abs(b - rodBent) > 1e-4) {
+    rodBent = b;
+    const p = rodMesh.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const s = (rodBase[i * 3 + 1] + ROD_H / 2) / ROD_H;
+      p.setX(i, rodBase[i * 3] - b * s * s);
+    }
+    p.needsUpdate = true;
+    rodShine.visible = b < 0.01;
+  }
+  if (phys.mode === 'balance') { // кончик и мир следуют за изгибом
+    pivot.position.x = -b;
+    pivot.rotation.z = Math.atan(2 * b / ROD_H);
+  }
+}
+
+// --- ночь: биржа закрыта, светит одна лампа ---
+const lamp = new THREE.SpotLight(0xffd59a, 0, 16, 0.6, 0.7, 1);
+lamp.position.set(0, 4.5, 3);
+lamp.target.position.set(0, -ROD_H, 0);
+stand.add(lamp, lamp.target);
+function stepNight(dt) {
+  const want = state.loaded && !state.marketOpen && !state.demo ? 1 : 0;
+  chaos.night += (want - chaos.night) * Math.min(1, dt * 1.5);
+  const n = chaos.night;
+  hemi.intensity = 1.6 - 1.15 * n;
+  sun.intensity = 2.2 - 1.9 * n;
+  lamp.intensity = 45 * n;
+  document.body.classList.toggle('night', n > 0.5);
+}
+
+// --- тряска телефона = рывок постамента ---
+let lastAcc = null, shakeAt = 0, motionAsked = false;
+function askMotion() {
+  if (motionAsked) return;
+  motionAsked = true;
+  const D = window.DeviceMotionEvent;
+  if (D && typeof D.requestPermission === 'function') D.requestPermission().catch(() => {});
+}
+addEventListener('devicemotion', (e) => {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  if (lastAcc && phys.mode === 'balance') {
+    const dx = a.x - lastAcc.x, d = Math.hypot(dx, a.y - lastAcc.y, a.z - lastAcc.z);
+    if (d > 22 && performance.now() - shakeAt > 250) {
+      shakeAt = performance.now();
+      phys.angV += (dx > 0 ? 1 : -1) * 2.4;
+    }
+  }
+  lastAcc = { x: a.x, y: a.y, z: a.z };
+});
+
+function stepEggs(dt) {
+  if (phys.mode === 'balance') {
+    const sp = Math.abs(phys.spin);
+    if (sp > FLY_SPIN) { chaos.flyAcc += (sp - FLY_SPIN) * 0.6 * dt; chaos.calm = 0; }
+    if (sp > TOWER_SPIN) chaos.towerAcc += (sp - TOWER_SPIN) * 0.4 * dt;
+    while (chaos.flyAcc >= 1) { chaos.flyAcc -= 1; flyTile(); }
+    while (chaos.towerAcc >= 1) { chaos.towerAcc -= 1; flyTower(); }
+    if (sp <= FLY_SPIN && !pops.length && (chaos.removed.size || towerBlocks.some((b) => b.gone))) {
+      chaos.calm += dt;
+      if (chaos.calm > 4) restoreAll();
+    }
+  }
+  if (chaos.green && t > chaos.greenUntil) { chaos.green = false; chaos.texDirty = true; drawTowers(); }
+  if (chaos.texDirty && t - chaos.texAt > 0.15) { chaos.texDirty = false; chaos.texAt = t; drawTexture(); }
+
+  const nv = state.bySym.NVDA;
+  const bendTo = nv?.live && nv.changePct < -5 && phys.mode === 'balance' ? 0.22 + Math.sin(t * 38) * 0.035 : 0;
+  chaos.bend += (bendTo - chaos.bend) * Math.min(1, dt * 8);
+  bendRod(chaos.bend);
+  chaos.jump += dt;
+
+  stepDebris(dt);
+  stepHeat(dt);
+  stepPops(dt);
+  stepNight(dt);
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    toasts[i].t += dt;
+    if (toasts[i].t > toasts[i].dur) toasts.splice(i, 1);
+  }
 }
 
 // ---------- анимация ----------

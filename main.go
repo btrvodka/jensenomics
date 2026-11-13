@@ -23,12 +23,14 @@ func main() {
 	addr := flag.String("addr", ":8080", "адрес HTTP-сервера")
 	every := flag.Duration("refresh", time.Minute, "как часто обновлять котировки")
 	demo := flag.Bool("demo", false, "случайные котировки без обращения к Yahoo")
+	crashFile := flag.String("crash-file", "", "файл для счётчика крахов (пусто — только в памяти)")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	store := NewStore(*demo)
+	crashes := NewCrashes(*crashFile)
 	go store.Run(ctx, *every)
 
 	static, _ := fs.Sub(webFS, "web")
@@ -37,7 +39,14 @@ func main() {
 	mux.HandleFunc("/api/quotes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
-		_ = json.NewEncoder(w).Encode(store.Snapshot())
+		snap := store.Snapshot()
+		snap.Crashes = crashes.Count()
+		_ = json.NewEncoder(w).Encode(snap)
+	})
+	mux.HandleFunc("POST /api/crash", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(map[string]int64{"crashes": crashes.Add(clientIP(r))})
 	})
 
 	srv := &http.Server{Addr: *addr, Handler: mux}
