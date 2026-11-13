@@ -33,6 +33,14 @@ make help           # все команды / all targets
 
 ### Docker
 
+Готовый образ / Prebuilt image (linux/amd64, linux/arm64):
+
+```sh
+docker run --rm -p 8080:8080 ghcr.io/btrvodka/jensenomics
+```
+
+Собрать самому / Build yourself:
+
 ```sh
 make docker-build && make docker-run          # http://localhost:8080
 # или напрямую / or directly:
@@ -51,3 +59,8 @@ docker run --rm -p 8080:8080 jensenomics
 Это пародия и мем, не инвестиционный совет. Проект никак не связан с NVIDIA или Дженсеном Хуангом. Данные Yahoo Finance неофициальные и с задержкой.
 
 This is a parody and a meme, not investment advice. Not affiliated with NVIDIA or Jensen Huang. Yahoo Finance data is unofficial and delayed.
+
+## Публикация образа / Publishing the image
+
+- **CI:** пуш тега `v1.2.3` → GitHub Actions публикует `ghcr.io/btrvodka/jensenomics:1.2.3`, `:1.2` и `:latest`. / Pushing a `v*` tag publishes the image via GitHub Actions.
+- **Вручную / Manually:** `cp .env.example .env`, вписать `GHCR_TOKEN` (scope `write:packages`), затем `make docker-login && make docker-push`.

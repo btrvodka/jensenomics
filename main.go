@@ -16,6 +16,9 @@ import (
 //go:embed web
 var webFS embed.FS
 
+// version задаётся при сборке: -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 func main() {
 	addr := flag.String("addr", ":8080", "адрес HTTP-сервера")
 	every := flag.Duration("refresh", time.Minute, "как часто обновлять котировки")
@@ -44,7 +47,7 @@ func main() {
 		defer cancel()
 		_ = srv.Shutdown(shCtx)
 	}()
-	log.Printf("jensenomics: мировая экономика крутится на http://localhost%s", *addr)
+	log.Printf("jensenomics %s: мировая экономика крутится на http://localhost%s", version, *addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
