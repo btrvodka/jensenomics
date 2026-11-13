@@ -36,6 +36,10 @@
   .foot { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.4; }
   .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
   #toggle { display: none; }
+  .egg { margin: 6px 0; color: var(--ink); font-weight: 700; }
+  #suggest { display: inline-block; margin: 2px 0 8px; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 8px;
+    background: #f3c33b; color: var(--ink); font-weight: 700; text-decoration: none; box-shadow: 2px 2px 0 var(--ink); }
+  #suggest:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
   #lang { position: absolute; top: 10px; right: 12px; display: flex; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; }
   #lang button { border: 0; background: #fff; font: 700 12px Rubik, sans-serif; padding: 3px 7px; cursor: pointer; color: var(--ink); }
   #lang button.on { background: var(--ink); color: #fff; }
@@ -85,6 +89,8 @@
   <div class="foot">
     <div><span class="dot" id="mdot"></span><span id="mstate">—</span></div>
     <div id="upd" data-i18n="loading">загрузка…</div>
+    <div class="egg" data-i18n="hint">Пасхалки: тащи постамент, тыкай в палку, хватай мир.</div>
+    <a id="suggest" href="https://github.com/btrvodka/jensenomics/issues/new" target="_blank" rel="noopener" data-i18n="suggest">Предложить идею</a>
     <div data-i18n="disclaimer">Данные: Yahoo Finance, с задержкой. Размер плиток ≈ капитализация. Не инвестиционный совет, а мем.</div>
   </div>
 </aside>

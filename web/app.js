@@ -83,9 +83,8 @@ function outlineByScale(mesh, t) {
   return o;
 }
 
-// иерархия: pivot (кончик пальца) → tilt (качание) → spinner (вращение) → heartGroup
+// иерархия: pivot (кончик стержня) → tilt (качание) → spinner (вращение) → heartGroup
 const pivot = new THREE.Group();
-scene.add(pivot);
 const tilt = new THREE.Group();
 pivot.add(tilt);
 const spinner = new THREE.Group();
@@ -162,33 +161,51 @@ for (const st of stacks) {
 }
 
 // ---------- постамент и красный стержень, как в исходном меме ----------
+// иерархия: stand (двигается) → rodPivot (наклон стержня у основания) → pivot (кончик, на нём мир)
+const ROD_H = 2.2;
+const stand = new THREE.Group();
+scene.add(stand);
+const rodPivot = new THREE.Group();
+rodPivot.position.y = -ROD_H;
+stand.add(rodPivot);
+rodPivot.add(pivot);
+pivot.position.y = ROD_H;
+const baseMeshes = [];
+let rodHit;
 {
-  const ROD_H = 2.2;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, ROD_H, 24), toon({ color: 0xd62a2a }));
-  rod.position.y = -ROD_H / 2;
-  scene.add(rod);
+  rod.position.y = ROD_H / 2;
+  rodPivot.add(rod);
   outlineByScale(rod, 0.025);
   const shine = new THREE.Mesh(new THREE.BoxGeometry(0.025, ROD_H * 0.85, 0.02), new THREE.MeshBasicMaterial({ color: 0xff8a80 }));
-  shine.position.set(-0.04, -ROD_H / 2, 0.085);
-  scene.add(shine);
+  shine.position.set(-0.04, ROD_H / 2, 0.085);
+  rodPivot.add(shine);
+  // невидимый толстый цилиндр, чтобы по тонкой палке было легко попасть
+  rodHit = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, ROD_H, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  rodHit.position.y = ROD_H / 2;
+  rodHit.userData.kind = 'rod';
+  rodPivot.add(rodHit);
 
   const white = toon({ color: 0xf2f0ea });
   const top = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.32, 1.4), white);
   top.position.y = -ROD_H - 0.16;
-  scene.add(top);
+  stand.add(top);
   outlineByScale(top, 0.03);
   const base = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.3, 2.2), white);
   base.position.y = -ROD_H - 0.32 - 0.15;
-  scene.add(base);
+  stand.add(base);
   outlineByScale(base, 0.03);
+  for (const m of [top, base]) { m.userData.kind = 'base'; baseMeshes.push(m); }
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 40),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.1 }));
   shadow.rotation.x = -Math.PI / 2;
   shadow.scale.set(2.6, 1.3, 1);
   shadow.position.y = -ROD_H - 0.63;
-  scene.add(shadow);
+  stand.add(shadow);
 }
+heartMesh.userData.kind = 'heart';
+for (const b of towerBlocks) b.mesh.userData.kind = 'heart';
 
 // ---------- вихри вокруг пузыря ----------
 const swirlMat = new THREE.MeshBasicMaterial({ color: 0x1b1b1b });
@@ -388,6 +405,8 @@ const I18N = {
     updated: 'обновлено ', noServer: 'нет связи с сервером: ', noData: 'нет данных',
     trn: ' трлн', bln: ' млрд', decimal: ',', locale: 'ru-RU',
     groups: { chips: 'Чипы', megacaps: 'Мегакэпы', software: 'Софт', hardware: 'Железо' },
+    tiltLabel: 'Крен рынка', crash: 'КРАХ!', crashLine: 'Вся мировая экономика', fixing: 'Хуанг уже везёт новые видеокарты…',
+    hint: 'Пасхалки: тащи постамент, тыкай в палку, хватай мир.', suggest: 'Предложить идею',
   },
   en: {
     docTitle: 'The Entire World Economy',
@@ -403,6 +422,8 @@ const I18N = {
     updated: 'updated ', noServer: 'no connection to server: ', noData: 'no data',
     trn: 'T', bln: 'B', decimal: '.', locale: 'en-US',
     groups: { chips: 'Chips', megacaps: 'Megacaps', software: 'Software', hardware: 'Hardware' },
+    tiltLabel: 'Market tilt', crash: 'CRASH!', crashLine: 'The entire world economy', fixing: 'Jensen is shipping more GPUs…',
+    hint: 'Easter eggs: drag the pedestal, poke the stick, grab the world.', suggest: 'Suggest an idea',
   },
 };
 let lang = 'ru';
@@ -487,7 +508,7 @@ async function load() {
 // ---------- подписи поверх сцены ----------
 const ov = document.getElementById('overlay');
 const octx = ov.getContext('2d');
-const tmpV = new THREE.Vector3();
+const tmpV = new THREE.Vector3(), tmpW = new THREE.Vector3();
 function toScreen(x, y, z) {
   tmpV.set(x, y, z).project(camera);
   return [(tmpV.x + 1) / 2 * innerWidth, (1 - tmpV.y) / 2 * innerHeight];
@@ -524,7 +545,9 @@ function drawOverlay() {
   title.forEach((l, i) => octx.fillText(l, mid, ly - bh - fs * 0.25 - (title.length - 1 - i) * fs * 1.05));
 
   // подпись к стержню со стрелкой
-  const [fx, fy] = toScreen(0.1, -1.0, 0);
+  tmpW.set(0.1, ROD_H * 0.545, 0);
+  rodPivot.localToWorld(tmpW);
+  const [fx, fy] = toScreen(tmpW.x, tmpW.y, tmpW.z);
   const lines = narrow ? T().labelNarrow : T().label;
   const fs2 = narrow ? Math.max(16, Math.min(34, (innerWidth - fx - 60) / 4.6)) : Math.max(18, Math.min(48, fs * 0.75));
   octx.font = `900 ${fs2}px Rubik, sans-serif`;
@@ -556,26 +579,110 @@ function drawOverlay() {
   octx.lineTo(ex, ey);
   octx.lineTo(ex + Math.cos(ang + 2.6) * ah, ey + Math.sin(ang + 2.6) * ah);
   octx.stroke();
+
+  // «падение в процентах»: крен рынка, пока мир держит баланс
+  if (phys.mode === 'balance' && Math.abs(phys.ang) > 0.03) {
+    tmpW.set(0, ROD_H * 0.8, 0);
+    rodPivot.localToWorld(tmpW);
+    const [kx, ky] = toScreen(tmpW.x, tmpW.y, tmpW.z);
+    const pct = Math.min(99, Math.abs(phys.ang) / TOPPLE * 100);
+    octx.font = `900 ${Math.round(fs2 * 0.7)}px Rubik, sans-serif`;
+    octx.textAlign = 'right';
+    octx.fillStyle = pct > 66 ? '#d62a2a' : '#161616';
+    octx.fillText(`${T().tiltLabel} −${pct.toFixed(0)}%`, kx - 24, ky);
+    octx.fillStyle = '#161616';
+  }
+
+  // крах
+  if (phys.mode === 'fall' || (phys.mode === 'reset' && phys.t < 0.6)) {
+    const cx2 = innerWidth / 2 + (innerWidth > 720 ? Math.min(170, innerWidth * 0.12) / 2 : 0);
+    const cy2 = innerHeight * 0.42;
+    const big = Math.min(140, innerWidth / 6);
+    octx.textAlign = 'center'; octx.textBaseline = 'middle';
+    octx.lineWidth = big / 10;
+    octx.strokeStyle = '#fffdf7';
+    octx.fillStyle = '#d62a2a';
+    octx.font = `900 ${big}px Rubik, sans-serif`;
+    const shake = phys.mode === 'fall' && phys.t < 1.2 ? (Math.random() - 0.5) * 8 : 0;
+    octx.strokeText(T().crash, cx2 + shake, cy2);
+    octx.fillText(T().crash, cx2 + shake, cy2);
+    const small = big * 0.32;
+    octx.font = `900 ${small}px Rubik, sans-serif`;
+    octx.lineWidth = small / 6;
+    const line = `${T().crashLine} ${phys.pct.toFixed(1).replace('.', T().decimal)}%`.replace('-', '−');
+    octx.strokeText(line, cx2, cy2 + big * 0.75);
+    octx.fillText(line, cx2, cy2 + big * 0.75);
+    if (phys.t > 2.5 && phys.mode === 'fall') {
+      octx.fillStyle = '#161616';
+      octx.font = `700 ${small * 0.7}px Rubik, sans-serif`;
+      octx.strokeText(T().fixing, cx2, cy2 + big * 1.25);
+      octx.fillText(T().fixing, cx2, cy2 + big * 1.25);
+    }
+    octx.strokeStyle = octx.fillStyle = '#161616';
+  }
 }
 
-// ---------- подсказка при наведении ----------
+// ---------- наведение и взаимодействие ----------
 const ray = new THREE.Raycaster();
 const ptr = new THREE.Vector2();
 const tip = $('tip');
 let pointer = null;
-function onPointer(e) { pointer = { x: e.clientX, y: e.clientY }; }
-addEventListener('pointermove', onPointer);
-addEventListener('pointerdown', onPointer);
+let drag = null; // { kind: 'base', off, target } | { kind: 'heart', lastX, dx }
+const zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const tmpP = new THREE.Vector3();
+
+function rayAt(x, y) {
+  ptr.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  return ray;
+}
+function planeX(x, y) { return rayAt(x, y).ray.intersectPlane(zPlane, tmpP) ? tmpP.x : null; }
+function hitTest(x, y) {
+  const hits = rayAt(x, y).intersectObjects([heartMesh, ...towerBlocks.map((b) => b.mesh), rodHit, ...baseMeshes], false);
+  return hits.length ? { ...hits[0], kind: hits[0].object.userData.kind } : null;
+}
+
+const cv = renderer.domElement;
+cv.style.touchAction = 'none';
+cv.addEventListener('pointerdown', (e) => {
+  pointer = { x: e.clientX, y: e.clientY };
+  const h = hitTest(e.clientX, e.clientY);
+  if (!h) return;
+  if (h.kind === 'rod' && phys.mode === 'balance') {
+    const local = rodPivot.worldToLocal(h.point.clone());
+    phys.angV += (local.x > 0 ? 1 : -1) * 1.7; // толчок в сторону от точки удара
+    return;
+  }
+  if (h.kind === 'base') {
+    const px = planeX(e.clientX, e.clientY);
+    if (px !== null) drag = { kind: 'base', off: px - phys.baseX, target: phys.baseX };
+  } else if (h.kind === 'heart' && phys.mode === 'balance') {
+    drag = { kind: 'heart', lastX: e.clientX, dx: 0 };
+  }
+  if (drag) { cv.setPointerCapture(e.pointerId); tip.style.display = 'none'; }
+});
+addEventListener('pointermove', (e) => {
+  pointer = { x: e.clientX, y: e.clientY };
+  if (!drag) return;
+  if (drag.kind === 'base') {
+    const px = planeX(e.clientX, e.clientY);
+    if (px !== null) drag.target = px - drag.off;
+  } else {
+    drag.dx += e.clientX - drag.lastX;
+    drag.lastX = e.clientX;
+  }
+});
+const endDrag = () => { drag = null; };
+addEventListener('pointerup', endDrag);
+addEventListener('pointercancel', endDrag);
 addEventListener('pointerleave', () => { pointer = null; tip.style.display = 'none'; });
 
 function pick() {
   if (!pointer) return;
-  ptr.set(pointer.x / innerWidth * 2 - 1, -(pointer.y / innerHeight) * 2 + 1);
-  ray.setFromCamera(ptr, camera);
-  const hits = ray.intersectObjects([heartMesh, ...towerBlocks.map((b) => b.mesh)], false);
+  if (drag) { document.body.style.cursor = 'grabbing'; return; }
+  const h = phys.mode === 'balance' ? hitTest(pointer.x, pointer.y) : null;
   let q = null;
-  if (hits.length) {
-    const h = hits[0];
+  if (h && h.kind === 'heart') {
     if (h.object === heartMesh && h.uv) {
       const px = h.uv.x * TEX_W, py = (1 - h.uv.y) * TEX_H;
       const t = tiles.find((t) => px >= t.x && px < t.x + t.w && py >= t.y && py < t.y + t.h);
@@ -585,8 +692,8 @@ function pick() {
       q = state.bySym[b.sym] || state.bySym[b.parentSym];
     }
   }
-  if (!q) { tip.style.display = 'none'; document.body.style.cursor = ''; return; }
-  document.body.style.cursor = 'pointer';
+  document.body.style.cursor = !h ? '' : h.kind === 'rod' ? 'pointer' : 'grab';
+  if (!q) { tip.style.display = 'none'; return; }
   tip.style.display = 'block';
   tip.innerHTML = `<div class="t">${q.symbol}</div><div>${q.name}</div>` +
     (q.live ? `<div class="row"><span>$${q.price.toFixed(2)}</span><b class="${q.changePct >= 0 ? 'up' : 'down'}">${fmtPct(q.changePct)}</b></div>` : `<div>${T().noData}</div>`) +
@@ -619,22 +726,143 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
+// ---------- физика: баланс, падение, восстановление ----------
+const TOPPLE = 0.75; // крен (рад), после которого мир падает
+const phys = {
+  baseX: 0, baseV: 0, ang: 0, angV: 0, spin: 0, mode: 'balance', t: 0,
+  hv: new THREE.Vector3(), hav: 0, pct: 0, target: 0, from: null,
+};
+// точки сердца для столкновений с полом и постаментом
+const hullPts = [];
+{
+  const pos = heartMesh.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i += 37) hullPts.push(new THREE.Vector3().fromBufferAttribute(pos, i));
+}
+function floorAt(x) {
+  const d = Math.abs(x - phys.baseX);
+  return d < 1.3 ? -ROD_H : d < 2.1 ? -ROD_H - 0.32 : -ROD_H - 0.62;
+}
+function collideHeart() {
+  pivot.updateMatrixWorld(true);
+  let pen = 0;
+  for (const p of hullPts) {
+    tmpP.copy(p).applyMatrix4(heartMesh.matrixWorld);
+    pen = Math.max(pen, floorAt(tmpP.x) - tmpP.y);
+  }
+  if (pen <= 0) return false;
+  pivot.position.y += pen;
+  if (phys.hv.y < 0) phys.hv.y *= -0.3;
+  phys.hv.x *= 0.6;
+  phys.hav *= 0.5;
+  return true;
+}
+function topple() {
+  phys.mode = 'fall';
+  phys.t = 0;
+  scene.attach(pivot); // мир слетает со стержня
+  const a = phys.ang;
+  phys.hv.set(-ROD_H * Math.cos(a) * phys.angV + phys.baseV * 0.5, 2 - ROD_H * Math.sin(a) * phys.angV * 0.3, 0);
+  phys.hav = Math.sign(a) * 2.2;
+  phys.pct = 0;
+  phys.target = -(25 + Math.random() * 60);
+}
+function startReset() {
+  phys.mode = 'reset';
+  phys.t = 0;
+  phys.from = { pos: pivot.position.clone(), rz: pivot.rotation.z, ang: phys.ang };
+}
+
+function step(dt) {
+  phys.t += dt;
+  const market = Math.min(6, 1.4 + state.avgAbs * 0.7) * (state.marketOpen ? 1 : 0.7);
+
+  // постамент едет за мышью, рывки раскачивают стержень
+  const prevV = phys.baseV;
+  if (drag && drag.kind === 'base') {
+    const target = THREE.MathUtils.clamp(drag.target, -4.5, 4.5);
+    const nx = phys.baseX + (target - phys.baseX) * Math.min(1, dt * 18);
+    phys.baseV = (nx - phys.baseX) / dt;
+    phys.baseX = nx;
+  } else {
+    phys.baseV = 0;
+  }
+  stand.position.x = phys.baseX;
+  const dv = THREE.MathUtils.clamp(phys.baseV - prevV, -40, 40);
+
+  if (phys.mode === 'balance') {
+    // перевёрнутый маятник с «балансировщиком»: пружина сильнее гравитации
+    phys.angV += dv * 0.1;
+    phys.angV += (-16 * phys.ang - 2.2 * phys.angV + 5 * Math.sin(phys.ang)) * dt;
+    phys.ang += phys.angV * dt;
+    if (Math.abs(phys.ang) > TOPPLE) topple();
+  } else if (phys.mode === 'fall') {
+    const lim = Math.PI / 2 - 0.05; // стержень ложится на постамент
+    phys.angV += 9 * Math.sin(phys.ang) * dt;
+    phys.ang += phys.angV * dt;
+    if (Math.abs(phys.ang) > lim) { phys.ang = Math.sign(phys.ang) * lim; phys.angV *= -0.3; }
+  }
+  rodPivot.rotation.z = phys.ang;
+
+  // вращение мира: рынок, рука зрителя или затухание после краха
+  if (drag && drag.kind === 'heart') {
+    const turn = drag.dx * 0.012;
+    spinner.rotation.y += turn;
+    phys.spin = phys.spin * 0.6 + (turn / dt) * 0.4;
+    drag.dx = 0;
+  } else {
+    if (phys.mode === 'balance') phys.spin += (market - phys.spin) * Math.min(1, dt * 0.8);
+    else phys.spin *= 1 - Math.min(1, dt * 1.5);
+    spinner.rotation.y += phys.spin * dt;
+  }
+
+  // покачивание; при крене мир отклоняется в другую сторону — держит баланс
+  const wob = phys.mode === 'balance' ? Math.min(0.32, 0.05 + Math.max(0, -state.avg) * 0.05) : 0;
+  const lean = phys.mode === 'balance' ? -1.2 * phys.ang : 0;
+  const k = Math.min(1, dt * 6);
+  tilt.rotation.x += (wob * Math.sin(t * 1.7) - tilt.rotation.x) * k;
+  tilt.rotation.z += (wob * Math.cos(t * 1.7) + lean - tilt.rotation.z) * k;
+  tilt.position.set(0, 0, 0);
+  if (state.avg < -4 && phys.mode === 'balance') { // рынок рушится — трясёт
+    tilt.position.set((Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06, 0);
+  }
+
+  if (phys.mode === 'fall') {
+    phys.hv.y -= 14 * dt;
+    pivot.position.addScaledVector(phys.hv, dt);
+    if (Math.abs(pivot.rotation.z) < 1.45) pivot.rotation.z += phys.hav * dt;
+    if (collideHeart()) phys.hv.x *= 1 - Math.min(1, dt * 3);
+    phys.pct += (phys.target - phys.pct) * Math.min(1, dt * 2.5);
+    if (phys.t > 5.5) startReset();
+  } else if (phys.mode === 'reset') {
+    const u = Math.min(1, phys.t / 1.4), e = u * u * (3 - 2 * u);
+    phys.ang = phys.from.ang * (1 - e);
+    phys.angV = 0;
+    rodPivot.rotation.z = phys.ang;
+    rodPivot.updateMatrixWorld(true);
+    tmpW.set(0, ROD_H, 0);
+    rodPivot.localToWorld(tmpW);
+    pivot.position.lerpVectors(phys.from.pos, tmpW, e);
+    pivot.rotation.z = phys.from.rz * (1 - e) + phys.ang * e;
+    phys.pct *= 1 - Math.min(1, dt * 4);
+    if (u >= 1) {
+      rodPivot.attach(pivot);
+      pivot.position.set(0, ROD_H, 0);
+      pivot.rotation.set(0, 0, 0);
+      phys.mode = 'balance';
+    }
+  }
+
+  for (const sw of swirls) sw.g.visible = phys.mode === 'balance';
+  for (const sw of swirls) sw.g.rotation.y -= sw.speed * Math.max(0.3, Math.abs(phys.spin)) * 0.6 * dt;
+}
+
 // ---------- анимация ----------
 const clock = new THREE.Clock();
 let t = 0;
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   t += dt;
-  const spin = Math.min(6, 1.4 + state.avgAbs * 0.7) * (state.marketOpen ? 1 : 0.7);
-  spinner.rotation.y += spin * dt;
-  const wob = Math.min(0.32, 0.05 + Math.max(0, -state.avg) * 0.05);
-  tilt.rotation.x = wob * Math.sin(t * 1.7);
-  tilt.rotation.z = wob * Math.cos(t * 1.7);
-  if (state.avg < -4) { // пузырь лопается — трясёт
-    pivot.position.x = (Math.random() - 0.5) * 0.06;
-    pivot.position.y = (Math.random() - 0.5) * 0.06;
-  }
-  for (const s of swirls) s.g.rotation.y -= s.speed * spin * 0.6 * dt;
+  step(dt);
   renderer.render(scene, camera);
   drawOverlay();
   pick();
