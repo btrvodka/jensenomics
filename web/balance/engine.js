@@ -46,10 +46,13 @@
 
   function createGame(opts) {
     opts = opts || {};
-    const W = opts.W || 10;
+    // PW — ширина подставки; O — «воздух» по бокам: туда можно свесить плитку.
+    const PW = opts.W || 10;
+    const O = opts.O == null ? 2 : opts.O;
+    const W = PW + 2 * O; // ширина сетки целиком
     const H = opts.H || 18;
     const cfg = {
-      K: opts.K || 200, // «сила Хуанга»: насколько палка возвращает мир в равновесие
+      K: opts.K || 215, // «сила Хуанга»: насколько палка возвращает мир в равновесие
       crit: opts.crit || 0.3, // крен, после которого мир слетает (рад, ≈ 17°)
       h0: 0.6, // толщина подставки над точкой опоры, в клетках
       I0: 30, // инерция пустой подставки
@@ -60,7 +63,8 @@
     let tickers = (opts.tickers || TICKERS).map((t) => Object.assign({}, t));
 
     const g = {
-      W, H, cfg,
+      W, H, PW, O, cfg,
+      missed: 0,
       cells: [], // cells[row][col] = null | id блока; row 0 — нижний ряд на подставке
       blocks: new Map(), // id → { id, symbol, cap, changePct, live, size, mass, cellMass, cellCap, left }
       piece: null, // падающая плитка: { symbol, cap, size, mass, x, y, ... }
@@ -80,7 +84,7 @@
       for (let r = 0; r < H; r++) g.cells.push(new Array(W).fill(null));
       g.blocks.clear();
       g.theta = 0; g.omega = 0; g.time = 0;
-      g.banked = 0; g.lines = 0; g.level = 1; g.placed = 0;
+      g.banked = 0; g.lines = 0; g.level = 1; g.placed = 0; g.missed = 0;
       g.over = false; g.crashPct = 0; g.crashReason = '';
       g.events = []; g.fallAcc = 0; g.soft = false;
       g.next = draw();
@@ -119,6 +123,11 @@
         for (let c = x; c < x + s; c++) if (g.cells[r][c] !== null) return false;
       }
       return true;
+    }
+
+    // Есть ли подставка под нижним рядом плитки (хотя бы одна колонка над ней).
+    function onPlatform(x, s) {
+      return x + s > O && x < O + PW;
     }
 
     function landingY(x, s) {
@@ -187,6 +196,7 @@
       x = Math.max(0, Math.min(W - p.size, x == null ? p.x : x));
       const y = landingY(x, p.size);
       if (y < 0) return null;
+      if (y === 0 && !onPlatform(x, p.size)) return { x, y, miss: true, theta: g.theta, fall: false, danger: 0 };
       const s = sums({ x, y, size: p.size, mass: p.mass });
       const th = equilibrium(s);
       return { x, y, theta: th, fall: th === null, danger: th === null ? 1 : Math.abs(th) / cfg.crit };
@@ -235,7 +245,8 @@
 
     function clearLines() {
       const full = [];
-      for (let r = 0; r < H; r++) if (g.cells[r].every((v) => v !== null)) full.push(r);
+      // Ряд полный, когда занята вся подставка; свисающие клетки уходят вместе с рядом.
+      for (let r = 0; r < H; r++) if (g.cells[r].slice(O, O + PW).every((v) => v !== null)) full.push(r);
       if (!full.length) return;
       let cap = 0;
       const syms = new Set();
@@ -243,6 +254,7 @@
       for (const r of full) {
         for (let c = 0; c < W; c++) {
           const id = g.cells[r][c];
+          if (id === null) continue; // пустой «воздух» сбоку
           const b = g.blocks.get(id);
           gone.push({ r, c, symbol: b.symbol, changePct: b.changePct, live: b.live });
           cap += b.cellCap; b.left--; syms.add(b.symbol);
@@ -284,13 +296,24 @@
       const y = landingY(p.x, p.size);
       const rows = p.y - y;
       p.y = y;
+      if (y === 0 && !onPlatform(p.x, p.size)) { miss(); return; }
       lock(rows);
+    }
+
+    // Плитка не задела ни подставку, ни другие плитки — улетела в пропасть.
+    function miss() {
+      const p = g.piece;
+      g.missed++;
+      g.events.push({ type: 'miss', piece: p });
+      g.piece = null;
+      spawn();
     }
 
     function stepDown() {
       const p = g.piece;
       if (!p) return;
       if (fits(p.x, p.y - 1, p.size)) { p.y--; return; }
+      if (p.y === 0 && !onPlatform(p.x, p.size)) { miss(); return; }
       lock(0);
     }
 
