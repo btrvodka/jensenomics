@@ -57,6 +57,12 @@
 - Тесты движка: `node --test balance-test/engine.test.cjs`.
 - Один HTML-файл без сервера: `python scripts/balance_single_html.py out.html`.
 
+<p>
+  <img src="docs/balance-game.jpg" width="49%" alt="игра">
+  <img src="docs/balance-crash.jpg" width="49%" alt="крах">
+</p>
+<p align="center"><img src="docs/balance-mobile.jpg" width="30%" alt="телефон"></p>
+
 **EN** · Tetris on Jensen's stick: companies fall from the top, tile size and weight grow with market cap. Drop them so the world does not tip over; a dashed marker predicts the tilt after the drop. Full rows "merge" into your bank. Open `/balance.html`.
 
 ## Запуск / Run
