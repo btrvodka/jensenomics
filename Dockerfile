@@ -19,10 +19,10 @@ LABEL org.opencontainers.image.source="https://github.com/btrvodka/jensenomics" 
       org.opencontainers.image.description="Joke 3D site: the entire world economy as a live-quote treemap spinning on Jensen Huang"
 
 # CA-сертификаты для HTTPS к Yahoo Finance есть в базовом образе (ca-certificates-bundle).
-RUN adduser -D -H -u 10001 jensenomics
-
+# В финальной стадии нет RUN: multi-arch сборка не требует эмуляции (QEMU).
+# Пользователь задан числовым UID, запись в /etc/passwd для этого не нужна.
 COPY --from=build /out/jensenomics /usr/local/bin/jensenomics
 EXPOSE 8080
-USER jensenomics
+USER 10001:10001
 ENTRYPOINT ["/usr/local/bin/jensenomics"]
 CMD ["-addr", ":8080"]
