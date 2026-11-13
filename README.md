@@ -44,6 +44,19 @@
 
 <p align="center"><img src="docs/mobile-ru.png" width="30%" alt="мобильная версия"></p>
 
+## Игра «Удержи экономику» (форк) / "Hold the Economy" game (fork)
+
+**RU** · Тетрис на палке Хуанга: сверху падают компании, размер и вес плитки растут с капитализацией (мегакэпы 3×3, крупные 2×2, остальные 1×1). Выбираешь, куда сбросить, чтобы мир не перекосило. Пунктир на «Крене рынка» и тень на поле показывают, что будет после сброса. Полный ряд — «слияние»: капитализация уходит в копилку, мир легчает. Высокая башня шатается сильнее, крен за ~17° — «КРАХ!». Живые котировки берутся с того же `/api/quotes`: цвет плиток — изменение за день, NVDA за день ослабляет или укрепляет палку; без сервера игра идёт на демо-котировках.
+
+Страница — `/balance.html` (кнопка «🎮 Удержи экономику» на главной). Управление: ← → или мышь — куда, пробел или клик — сбросить, ↓ — быстрее, P — пауза, M — звук. На телефоне: веди пальцем, тап — сбросить, или кнопки ◀ ▼ ▶.
+
+- `web/balance/engine.js` — логика без DOM: сетка, линии, крен как перевёрнутый маятник (K·θ = τ·cosθ + S·sinθ), прогноз крена и крах.
+- `web/balance/game.js` — отрисовка на canvas, ввод, звук WebAudio, тряска и хит-стоп.
+- Тесты движка: `node --test balance-test/engine.test.cjs`.
+- Один HTML-файл без сервера: `python scripts/balance_single_html.py out.html`.
+
+**EN** · Tetris on Jensen's stick: companies fall from the top, tile size and weight grow with market cap. Drop them so the world does not tip over; a dashed marker predicts the tilt after the drop. Full rows "merge" into your bank. Open `/balance.html`.
+
 ## Запуск / Run
 
 ```sh

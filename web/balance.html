@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ea">
+<title>Удержи экономику</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f6f3ea;
+    --card: #fffdf7;
+    --ink: #161616;
+    --up: #1f9d48;
+    --down: #d62a2a;
+    --gold: #f3c33b;
+    --muted: #6b6760;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink);
+    font-family: Rubik, system-ui, sans-serif; overflow: hidden; }
+  body { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+  #cv { position: fixed; inset: 0; touch-action: none; }
+
+  .card { background: var(--card); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--ink); }
+  #hud { position: fixed; top: 16px; left: 16px; width: 300px; max-height: calc(100% - 32px); overflow: auto;
+    padding: 14px 16px; font-size: 14px; z-index: 2; }
+  #hud h2 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+  .big { font-size: 28px; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row b { font-weight: 700; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .sec { margin-top: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat { border: 2px solid var(--ink); border-radius: 8px; padding: 3px 6px; text-align: center; }
+  .stat small { display: block; font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .stat b { font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+  /* Весы крена: середина — равновесие, края — крах */
+  .tilt { position: relative; height: 22px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; margin-top: 6px;
+    background: linear-gradient(90deg, var(--down) 0 7%, #f6d9d2 7% 30%, #e9f3e6 30% 70%, #f6d9d2 70% 93%, var(--down) 93%); }
+  .tilt .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink); opacity: .35; }
+  .tilt .now { position: absolute; top: 2px; bottom: 2px; width: 8px; margin-left: -4px; left: 50%; background: var(--ink); border-radius: 3px; }
+  .tilt .ghost { position: absolute; top: 0; bottom: 0; width: 0; left: 50%; border-left: 3px dashed var(--ink); margin-left: -1px; opacity: .7; }
+  .tilt .ghost.fall { border-color: var(--down); opacity: 1; }
+  #tiltTxt { min-height: 18px; }
+
+  #nextWrap { display: flex; align-items: center; gap: 10px; }
+  #nextCv { width: 64px; height: 64px; flex: none; }
+  #nextInfo { font-size: 13px; line-height: 1.35; min-width: 0; }
+  #nextInfo b { font-size: 16px; font-weight: 900; }
+
+  .foot { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .keys b { color: var(--ink); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: #9a958c; }
+  .tools { display: flex; gap: 6px; margin-top: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 2px solid var(--ink); border-radius: 8px;
+    background: var(--card); color: var(--ink); font: 700 13px Rubik, sans-serif; padding: 5px 10px; cursor: pointer;
+    box-shadow: 2px 2px 0 var(--ink); text-decoration: none; min-height: 34px; }
+  .btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+  .btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn.icon { width: 38px; padding: 0; font-size: 16px; }
+  .btn.gold { background: var(--gold); }
+  .btn.red { background: var(--down); color: #fff; }
+  .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .ver { margin-top: 6px; }
+
+  /* Окна старта, паузы и краха — в центре поля */
+  .modal { position: fixed; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100% - 32px));
+    padding: 18px 20px; text-align: center; display: none; }
+  .modal.show { display: block; animation: pop .28s cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes pop { from { transform: translate(-50%, -50%) scale(.85); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+  .modal h1 { margin: 0; font-size: 34px; font-weight: 900; line-height: 1.05; }
+  .modal h1.crash { color: var(--down); font-size: 54px; -webkit-text-stroke: 1px var(--ink); }
+  .modal p { margin: 8px 0; font-size: 15px; line-height: 1.4; }
+  .modal ol { text-align: left; margin: 10px 0 12px; padding-left: 22px; font-size: 15px; line-height: 1.45; }
+  .modal .btn { font-size: 17px; padding: 8px 18px; min-height: 46px; margin-top: 6px; }
+  .modal .sub { color: var(--muted); font-size: 13px; }
+  .modal .score { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+  #pad { display: none; }
+
+  @media (max-width: 720px) {
+    #hud { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; width: auto; max-height: none; overflow: visible;
+      padding: 8px 10px; font-size: 12px; box-shadow: 3px 3px 0 var(--ink); }
+    #hud .hideM { display: none; }
+    #hud h2 { font-size: 10px; margin-bottom: 2px; }
+    .big { font-size: 20px; }
+    .mtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .sec { margin-top: 6px; }
+    .tilt { height: 16px; margin-top: 3px; }
+    #nextCv { width: 40px; height: 40px; }
+    #nextInfo { font-size: 11px; } #nextInfo b { font-size: 13px; }
+    #pad { display: grid; position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 2;
+      grid-template-columns: 1fr 1.4fr 1fr; gap: 8px; }
+    #pad .btn { min-height: 52px; font-size: 22px; }
+    #hud .foot { position: absolute; top: 6px; right: 60px; margin: 0; }
+    #hud .tools { margin: 0; }
+    #hud .btn.icon { width: 34px; min-height: 30px; font-size: 14px; box-shadow: 2px 2px 0 var(--ink); }
+    #hud h2:first-child { padding-right: 84px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Игровое поле: вся мировая экономика на палке Хуанга"></canvas>
+
+<aside id="hud" class="card">
+  <div class="mtop">
+    <div>
+      <h2>Капитализация всей мировой экономики</h2>
+      <div class="big" id="cap">$0 млрд</div>
+    </div>
+    <div id="nextWrap">
+      <canvas id="nextCv" width="128" height="128"></canvas>
+      <div id="nextInfo" class="hideM"><span class="sub">Следом</span><br><b id="nextSym">—</b><br><span id="nextCap">—</span></div>
+    </div>
+  </div>
+  <div class="row hideM"><span>зафиксировано</span><b id="banked">$0 млрд</b></div>
+  <div class="row hideM"><span>рекорд</span><b id="best">—</b></div>
+
+  <div class="sec">
+    <h2>Крен рынка</h2>
+    <div class="tilt" title="Чёрная метка — крен сейчас, пунктир — крен после сброса туда, где стоит плитка">
+      <div class="mid"></div><div class="ghost" id="ghostMark"></div><div class="now" id="nowMark"></div>
+    </div>
+    <div class="row" id="tiltTxt"><span id="tiltNow">в равновесии</span><b id="tiltAfter">—</b></div>
+  </div>
+
+  <div class="sec stats hideM">
+    <div class="stat"><small>линии</small><b id="lines">0</b></div>
+    <div class="stat"><small>уровень</small><b id="level">1</b></div>
+    <div class="stat"><small>плиток</small><b id="placed">0</b></div>
+  </div>
+
+  <div class="foot">
+    <div class="hideM"><span class="dot" id="mdot"></span><span id="mstate">котировки загружаются…</span></div>
+    <div class="keys hideM"><b>← →</b> или мышь — куда, <b>пробел</b> или клик — сбросить, <b>↓</b> — быстрее, <b>P</b> — пауза.</div>
+    <div class="tools">
+      <button class="btn icon" id="pauseBtn" title="Пауза (P)" aria-label="Пауза">⏸</button>
+      <button class="btn icon" id="muteBtn" title="Звук (M)" aria-label="Звук">🔊</button>
+      <a class="btn hideM" href="./" title="Исходный мем Лёхи: экономика крутится на палке">🌐 Крутить экономику</a>
+    </div>
+    <div class="ver hideM">Версия 1 · 13.11.2026 · форк <a href="https://github.com/btrvodka/jensenomics" target="_blank" rel="noopener">jensenomics</a></div>
+  </div>
+</aside>
+
+<div id="pad" aria-label="Кнопки управления">
+  <button class="btn" id="padL" aria-label="Влево">◀</button>
+  <button class="btn gold" id="padDrop" aria-label="Сбросить">▼ сбросить</button>
+  <button class="btn" id="padR" aria-label="Вправо">▶</button>
+</div>
+
+<section class="modal card" id="startCard" role="dialog" aria-labelledby="startTitle">
+  <h1 id="startTitle">Удержи<br>экономику</h1>
+  <ol>
+    <li>Сверху падают компании. Чем больше капитализация, тем больше и тяжелее плитка.</li>
+    <li>Выбери, куда сбросить, чтобы мир на палке Хуанга не перекосило. Пунктир на «Крене рынка» покажет, что будет после сброса.</li>
+    <li>Заполнил ряд целиком — слияние: капитализация уходит в копилку, мир легчает. Высокая башня шатается сильнее.</li>
+  </ol>
+  <button class="btn gold" id="startBtn">Играть</button>
+  <p class="sub" id="startHint">Пробел или Enter — тоже старт</p>
+</section>
+
+<section class="modal card" id="pauseCard" role="dialog">
+  <h1>Пауза</h1>
+  <p class="sub">Рынок закрыт, Хуанг отдыхает.</p>
+  <button class="btn gold" id="resumeBtn">Продолжить</button>
+</section>
+
+<section class="modal card" id="overCard" role="dialog" aria-labelledby="overTitle">
+  <h1 class="crash" id="overTitle">КРАХ!</h1>
+  <p><b id="overLine">Вся мировая экономика −0%</b></p>
+  <p class="sub" id="overWhy"></p>
+  <div class="sub">зафиксировано</div>
+  <div class="score" id="overScore">$0</div>
+  <p class="sub" id="overBest"></p>
+  <button class="btn gold" id="againBtn">Ещё раз: Хуанг везёт видеокарты</button>
+</section>
+
+<script src="balance/engine.js"></script>
+<script src="balance/game.js"></script>
+</body>
+</html>
