@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120d33">
+<title>Удержи экономику</title>
+<meta name="description" content="Тетрис на палке Хуанга: сбрасывай компании так, чтобы вся мировая экономика не перекосилась.">
+<meta property="og:title" content="Удержи экономику">
+<meta property="og:description" content="Тетрис на палке Хуанга: удержи всю мировую экономику в равновесии.">
+<style>
+  @font-face { font-family: 'Unbounded'; font-weight: 400 900; font-display: swap;
+    src: url(balance/assets/unbounded-cyr.woff2) format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+  @font-face { font-family: 'Unbounded'; font-weight: 400 900; font-display: swap;
+    src: url(balance/assets/unbounded-lat.woff2) format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: 'Rubik'; font-weight: 300 900; font-display: swap;
+    src: url(balance/assets/rubik-cyr.woff2) format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+  @font-face { font-family: 'Rubik'; font-weight: 300 900; font-display: swap;
+    src: url(balance/assets/rubik-lat.woff2) format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+  :root {
+    --night: #120d33;
+    --panel: rgba(26, 19, 64, .94);
+    --panel-2: #241a55;
+    --line: rgba(255, 255, 255, .10);
+    --text: #f6f1ff;
+    --muted: #b9afe0;
+    --mint: #4ff0b0;
+    --pink: #ff5fa8;
+    --gold: #ffc84a;
+    --red: #ff4d5e;
+    --cyan: #46c8ff;
+    --violet: #8f80ff;
+    --orange: #ff9a3c;
+    --display: 'Unbounded', 'Rubik', system-ui, sans-serif;
+    --body: 'Rubik', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); font-family: var(--body); overflow: hidden; }
+  body { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+  ::selection { background: var(--pink); color: #fff; }
+  #cv { position: fixed; inset: 0; touch-action: none; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(5, 2, 20, .55), inset 0 1px 0 rgba(255, 255, 255, .06); position: relative; }
+  .panel::before { content: ''; position: absolute; left: 18px; right: 18px; top: -1px; height: 3px; border-radius: 0 0 3px 3px;
+    background: linear-gradient(90deg, var(--mint), var(--cyan) 40%, var(--violet) 70%, var(--pink)); }
+
+  #hud { position: fixed; top: 18px; left: 18px; width: 304px; max-height: calc(100% - 36px); overflow: auto; z-index: 2;
+    padding: 16px 18px 14px; font-size: 14px; scrollbar-width: none; }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .mtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .brand b { font: 900 15px/1.1 var(--display); letter-spacing: .01em; }
+  .brand span { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .lbl { margin: 14px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .score { font: 900 26px/1.05 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; letter-spacing: -.02em; }
+  .score.bump { animation: bump .35s cubic-bezier(.2, 1.6, .4, 1); }
+  @keyframes bump { 40% { transform: scale(1.08); color: var(--gold); } }
+  .row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row b { font-weight: 700; }
+  .gold { color: var(--gold); } .bad { color: var(--red); } .good { color: var(--mint); }
+
+  .tilt { position: relative; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 6px; background: #120c34;
+    box-shadow: inset 0 0 0 1px var(--line); }
+  .tilt .zones { position: absolute; inset: 0; background: linear-gradient(90deg, var(--red) 0 6%, rgba(255, 77, 94, .28) 6% 28%,
+    rgba(79, 240, 176, .22) 28% 72%, rgba(255, 77, 94, .28) 72% 94%, var(--red) 94%); }
+  .tilt .mid { position: absolute; left: 50%; top: 3px; bottom: 3px; width: 2px; margin-left: -1px; background: rgba(255, 255, 255, .35); }
+  .tilt .now { position: absolute; top: 2px; bottom: 2px; width: 10px; margin-left: -5px; left: 50%; border-radius: 5px;
+    background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, .8); }
+  .tilt .ghost { position: absolute; top: 1px; bottom: 1px; width: 10px; margin-left: -5px; left: 50%; border-radius: 5px;
+    border: 2px dashed var(--gold); }
+  .tilt .ghost.fall { border-color: var(--red); background: rgba(255, 77, 94, .35); }
+  .tiltrow { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 13px; white-space: nowrap; min-height: 18px; }
+
+  .next { display: flex; flex-direction: column-reverse; align-items: center; flex: none; width: 58px; }
+  #nextCv { width: 56px; height: 56px; }
+  #nextInfo { text-align: center; line-height: 1.2; }
+  #nextInfo small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  #nextInfo b, #nextInfo span { display: none; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { background: var(--panel-2); border-radius: 12px; padding: 6px 4px 7px; text-align: center; }
+  .stat small { display: block; font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .stat b { font: 900 18px var(--display); font-variant-numeric: tabular-nums; }
+
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+  .foot { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .foot a { color: var(--text); text-underline-offset: 3px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--gold); }
+  .keys b { color: var(--text); font-weight: 700; }
+  .tools { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 12px; cursor: pointer;
+    background: var(--panel-2); color: var(--text); font: 700 13px var(--body); padding: 0 12px; min-height: 38px; text-decoration: none;
+    box-shadow: inset 0 0 0 1px var(--line), 0 4px 10px rgba(0, 0, 0, .25); transition: transform .12s, box-shadow .12s, background .12s; }
+  .btn:hover { background: #2f2370; transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px) scale(.98); }
+  .btn.icon { width: 38px; padding: 0; }
+  .btn.go { background-color: var(--mint); background-image: linear-gradient(180deg, #7dffc9, var(--mint) 55%, #25c98d); color: #0d2a20;
+    box-shadow: 0 6px 0 #179064, 0 10px 24px rgba(79, 240, 176, .35); }
+  .btn.go:hover { background-color: #63f5bb; background-image: linear-gradient(180deg, #9affd6, #63f5bb 55%, #2fd498); }
+  .btn.go:active { transform: translateY(4px); box-shadow: 0 2px 0 #179064, 0 6px 14px rgba(79, 240, 176, .3); }
+  .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+  .modal { position: fixed; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100% - 28px));
+    padding: 22px 22px 20px; text-align: center; display: none; }
+  .modal.show { display: block; animation: pop .42s cubic-bezier(.2, 1.4, .4, 1); }
+  @keyframes pop { from { transform: translate(-50%, -46%) scale(.82); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+  .modal h1 { margin: 0; font: 900 32px/1.05 var(--display); letter-spacing: -.01em; text-wrap: balance; }
+  .modal h1.crash { color: var(--red); font-size: 58px; text-shadow: 0 4px 0 #8a1020, 0 8px 26px rgba(255, 77, 94, .4); }
+  .modal p { margin: 8px 0; font-size: 15px; line-height: 1.45; }
+  .modal .art { width: 62%; max-width: 230px; margin: -6px auto 6px; display: block; filter: drop-shadow(0 12px 22px rgba(79, 240, 176, .35)); }
+  .modal ol { text-align: left; margin: 12px 0 16px; padding: 0; list-style: none; counter-reset: s; font-size: 15px; line-height: 1.4; }
+  .modal ol li { counter-increment: s; position: relative; padding-left: 38px; margin: 9px 0; }
+  .modal ol li::before { content: counter(s); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 9px;
+    background: var(--panel-2); color: var(--mint); font: 900 13px/26px var(--display); text-align: center; }
+  .modal .btn.go { font: 900 17px var(--display); min-height: 52px; padding: 0 28px; margin-top: 6px; }
+  .modal .sub { color: var(--muted); font-size: 13px; }
+  .modal .big { font: 900 34px var(--display); font-variant-numeric: tabular-nums; color: var(--gold); }
+  .modal .links { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+
+  #pad { display: none; }
+
+  @media (max-width: 720px) {
+    #hud { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; width: auto; max-height: none; overflow: visible;
+      padding: 10px 12px 9px; border-radius: 16px; }
+    #hud .hideM { display: none !important; }
+    .brand { display: none; }
+    .lbl { margin: 0 0 2px; font-size: 11px; }
+    .score { font-size: 21px; }
+    .mtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .mtop .lbl { margin-top: 0; }
+    .next { width: auto; } #nextCv { width: 42px; height: 42px; }
+    .tilt { height: 14px; margin-top: 4px; }
+    .tiltrow { font-size: 12px; margin-top: 3px; }
+    #hud .tools { position: absolute; top: 9px; right: 62px; margin: 0; }
+    #hud .btn.icon { width: 34px; min-height: 32px; }
+    #pad { display: grid; position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 2;
+      grid-template-columns: 1fr 1.5fr 1fr; gap: 8px; }
+    #pad .btn { min-height: 56px; border-radius: 16px; }
+    #pad .btn.go { font: 900 15px var(--display); }
+    #pad svg.i { width: 24px; height: 24px; }
+    .modal h1 { font-size: 27px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 4v13M6.5 11.5L12 17l5.5-5.5M5 20.5h14"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8M12 17.2v.1"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18"/></symbol>
+</svg>
+
+<canvas id="cv" aria-label="Игровое поле: вся мировая экономика на палке Хуанга"></canvas>
+
+<aside id="hud" class="panel">
+  <div class="brand"><b>Удержи экономику</b><span id="ver">Версия 2 · 13.11.2026</span></div>
+  <div class="mtop">
+    <div>
+      <div class="lbl">Капитализация мира</div>
+      <div class="score" id="cap">$0 млрд</div>
+    </div>
+    <div class="next" title="Следующая компания"><canvas id="nextCv" width="128" height="128" aria-label="Следующая компания"></canvas><div class="hideM" id="nextInfo"><small>следом</small><b id="nextSym">—</b><span id="nextCap">—</span></div></div>
+  </div>
+  <div class="row hideM"><span>в копилке</span><b class="gold" id="banked">$0 млрд</b></div>
+  <div class="row hideM"><span>рекорд</span><b id="best">—</b></div>
+
+  <div class="lbl hideM">Крен рынка</div>
+  <div class="tilt" title="Белая метка — крен сейчас, пунктир — крен после сброса туда, где висит плитка">
+    <div class="zones"></div><div class="mid"></div><div class="ghost" id="ghostMark"></div><div class="now" id="nowMark"></div>
+  </div>
+  <div class="tiltrow"><span id="tiltNow">в равновесии</span><b id="tiltAfter">—</b></div>
+
+
+  <div class="stats hideM">
+    <div class="stat"><small>слияния</small><b id="lines">0</b></div>
+    <div class="stat"><small>уровень</small><b id="level">1</b></div>
+    <div class="stat"><small>мимо</small><b id="missed">0</b></div>
+  </div>
+
+  <div class="legend hideM" aria-label="Цвет плитки — отрасль">
+    <span><i style="background:#2fd890"></i>чипы</span><span><i style="background:#7d6bff"></i>гиганты</span>
+    <span><i style="background:#ff8f3a"></i>софт</span><span><i style="background:#3cbcff"></i>железо</span>
+  </div>
+
+  <div class="foot">
+    <div class="hideM"><span class="dot" id="mdot"></span><span id="mstate">котировки загружаются…</span></div>
+    <div class="keys hideM"><b>← →</b> или мышь — куда, <b>пробел</b> или клик — сбросить, <b>↓</b> — быстрее, <b>P</b> — пауза.</div>
+    <div class="tools">
+      <button class="btn icon" id="pauseBtn" title="Пауза (P)" aria-label="Пауза"><svg class="i"><use href="#i-pause"/></svg></button>
+      <button class="btn icon" id="muteBtn" title="Звук (M)" aria-label="Звук"><svg class="i"><use href="#i-sound"/></svg></button>
+      <a class="btn hideM" id="guideLink" href="balance-guide.html" target="_blank" rel="noopener"><svg class="i"><use href="#i-help"/></svg>Как играть</a>
+      <a class="btn icon hideM" id="memeLink" href="./" title="Исходный мем Лёхи: экономика крутится на палке" aria-label="Исходный мем"><svg class="i"><use href="#i-globe"/></svg></a>
+    </div>
+  </div>
+</aside>
+
+<div id="pad" aria-label="Кнопки управления">
+  <button class="btn" id="padL" aria-label="Влево"><svg class="i"><use href="#i-left"/></svg></button>
+  <button class="btn go" id="padDrop" aria-label="Сбросить"><svg class="i"><use href="#i-drop"/></svg>Сбросить</button>
+  <button class="btn" id="padR" aria-label="Вправо"><svg class="i"><use href="#i-right"/></svg></button>
+</div>
+
+<section class="modal panel" id="startCard" role="dialog" aria-labelledby="startTitle">
+  <img class="art" src="balance/assets/gpu.webp" alt="">
+  <h1 id="startTitle">Удержи экономику</h1>
+  <ol>
+    <li>Сверху падают компании. Чем больше капитализация, тем крупнее и тяжелее плитка.</li>
+    <li>Сбрасывай так, чтобы мир на палке Хуанга не перекосило. Пунктир на «Крене рынка» покажет крен после сброса.</li>
+    <li>Заполнил подставку рядом — слияние: деньги в копилку, мир легчает. Можно свесить плитку за край — длинное плечо.</li>
+  </ol>
+  <button class="btn go" id="startBtn"><svg class="i"><use href="#i-play"/></svg>Играть</button>
+  <div class="links"><a class="btn" href="balance-guide.html" target="_blank" rel="noopener"><svg class="i"><use href="#i-help"/></svg>Подробный гайд</a></div>
+  <p class="sub">Пробел или Enter — тоже старт</p>
+</section>
+
+<section class="modal panel" id="pauseCard" role="dialog">
+  <h1>Пауза</h1>
+  <p class="sub">Биржа закрыта, Хуанг отдыхает.</p>
+  <button class="btn go" id="resumeBtn"><svg class="i"><use href="#i-play"/></svg>Продолжить</button>
+</section>
+
+<section class="modal panel" id="overCard" role="dialog" aria-labelledby="overTitle">
+  <h1 class="crash" id="overTitle">КРАХ!</h1>
+  <p><b id="overLine">Вся мировая экономика −0%</b></p>
+  <p class="sub" id="overWhy"></p>
+  <div class="sub">в копилке</div>
+  <div class="big" id="overScore">$0</div>
+  <p class="sub" id="overBest"></p>
+  <button class="btn go" id="againBtn"><svg class="i"><use href="#i-play"/></svg>Ещё раз</button>
+  <p class="sub">Хуанг уже везёт новые видеокарты</p>
+</section>
+
+<script src="balance/engine.js"></script>
+<script src="balance/game.js"></script>
+</body>
+</html>
